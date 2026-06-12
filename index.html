@@ -23,7 +23,7 @@
                 console.log({ user, pass })
 
 
-                const res = await fetch('https://test-7.mikealvarrez-02.workers.dev/login', {
+                const res = await fetch('https://front-back.user.workers.dev/login', {
                     method:'POST', body:JSON.stringify({ user, pass })
                 })
 
@@ -47,7 +47,7 @@
                 console.log({ token })
 
     
-                const res = await fetch('https://test-7.mikealvarrez-02.workers.dev/auth', {
+                const res = await fetch('https://front-back.user.workers.dev/auth', {
                     method:'GET', headers: { Authorization:`Bearer ${token}` }
                 })
     
@@ -69,7 +69,7 @@
                 console.log({ token, user, pass })
                 
                 
-                const res = await fetch('https://test-7.mikealvarrez-02.workers.dev/private', {
+                const res = await fetch('https://front-back.user.workers.dev/private', {
                     method:'POST', 
                     headers: { Authorization:`Bearer ${token}` }, 
                     body: JSON.stringify({ user, pass }), 
