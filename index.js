@@ -46,20 +46,19 @@ const key = async () => await crypto.subtle.importKey('raw',
 
 
 async function token_generate(user) {
-    const header    = btoa(JSON.stringify({ alg:'HS256' }))
     const payload   = btoa(JSON.stringify({ user, exp: Date.now() + 1*60*60*1000 }))
-    const sign      = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign('HMAC', await key(), new TextEncoder().encode(`${header}.${payload}`)))))
-    const token     = `${header}.${payload}.${sign}`
+    const sign      = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign('HMAC', await key(), new TextEncoder().encode(payload)))))
+    const token     = `${payload}.${sign}`
     return token
 }
 
 
 async function token_validate(token) {
     try {
-        const [header, payload, sign] = token.split('.')
-        const { user, exp }           =  JSON.parse(atob(payload))
+        const [payload, sign] = token.split('.')
+        const { user, exp }   =  JSON.parse(atob(payload))
         
-        const cond_1    =  await crypto.subtle.verify('HMAC', await key(), Uint8Array.from(atob(sign), c => c.charCodeAt(0)), new TextEncoder().encode(`${header}.${payload}`))
+        const cond_1    =  await crypto.subtle.verify('HMAC', await key(), Uint8Array.from(atob(sign), c => c.charCodeAt(0)), new TextEncoder().encode(payload))
         const cond_2    =  DBASE.some(row => (row.user == user))
         const cond_3    = (Date.now() < exp)
         const cond_all  = (cond_1 && cond_2 && cond_3)
