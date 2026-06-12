@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Public</title>
+    </head>
+    <body>
+        <h1>Public</h1>
+
+        <input id="user" type="text"     /><br/>
+        <input id="pass" type="password" /><br/>
+        
+        <button id="login"  >Login</button>
+        <button id="verify" >Verify</button>
+        <button id="enter"  >Enter</button>
+
+        
+
+        <script>
+            document.getElementById('login').addEventListener('click', async e => {
+                const user = document.getElementById('user').value
+                const pass = document.getElementById('pass').value
+                
+                console.log({ user, pass })
+
+
+                const res = await fetch('https://test-7.mikealvarrez-02.workers.dev/login', {
+                    method:'POST', body:JSON.stringify({ user, pass })
+                })
+
+                const { status, token } = await res.json()
+                const is_valid = (status==200 && token!="")
+                
+                console.log({ is_valid })
+
+
+                if (is_valid == true)  localStorage.setItem('token', token)
+                if (is_valid == false) localStorage.removeItem('token')
+            })
+        </script>
+
+
+
+        <script>
+            document.getElementById('verify').addEventListener('click', async e => {
+                const token = localStorage.getItem('token')
+                
+                console.log({ token })
+
+    
+                const res = await fetch('https://test-7.mikealvarrez-02.workers.dev/auth', {
+                    method:'GET', headers: { Authorization:`Bearer ${token}` }
+                })
+    
+                const { status, auth } = await res.json()
+                const is_valid = (status==200 && auth==true)
+            
+                console.log({ is_valid })
+            })
+        </script>
+
+
+
+        <script>
+            document.getElementById('enter').addEventListener('click', async e => {
+                const token = localStorage.getItem('token')
+                const user  = document.getElementById('user').value
+                const pass  = document.getElementById('pass').value
+
+                console.log({ token, user, pass })
+                
+                
+                const res = await fetch('https://test-7.mikealvarrez-02.workers.dev/private', {
+                    method:'POST', 
+                    headers: { Authorization:`Bearer ${token}` }, 
+                    body: JSON.stringify({ user, pass }), 
+                })
+                
+                const status   = res.status
+                const html     = await res.text()
+                const is_valid = (status==200 && html!="")
+                
+                console.log({ is_valid })
+
+                
+                if (is_valid) document.body.innerHTML = html 
+            })
+        </script>
+
+    </body>
+</html>
