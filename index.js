@@ -11,9 +11,9 @@ const DBASE = [
 
 
 
-// ======================================= //
+// ====================================== //
 // ================ Hash ================ //
-// ======================================= //
+// ====================================== //
 const SALT = '__SALT__'
 
 async function hash_generate(pass) {
@@ -39,22 +39,37 @@ async function hash_validate(user, pass) {
 // ======================================= //
 const SECRET = '__SECRET__'
 
-function token_generate(user) {
-    return btoa(`${SECRET}:${user}:${Date.now() + 1*60*60*1000}`)
+const key = async () => await crypto.subtle.importKey('raw', 
+    new TextEncoder().encode(SECRET), 
+    { name:'HMAC', hash:'SHA-256' }, false, ['sign','verify']
+)
+
+
+async function token_generate(user) {
+    const header    = btoa(JSON.stringify({ alg:'HS256' }))
+    const payload   = btoa(JSON.stringify({ user, exp: Date.now() + 1*60*60*1000 }))
+    const sign      = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign('HMAC', await key(), new TextEncoder().encode(`${header}.${payload}`)))))
+    const token     = `${header}.${payload}.${sign}`
+    return token
 }
 
-function token_validate(token) {
+
+async function token_validate(token) {
     try {
-        const [_secret, _user, _expiry] = atob(token).split(':')
-        const cond_1   = (_secret == SECRET)
-        const cond_2   =  DBASE.some(row => (row.user == _user))
-        const cond_3   = (Date.now() < Number(_expiry))
-        const cond_all = (cond_1 && cond_2 && cond_3)
+        const [header, payload, sign] = token.split('.')
+        const { user, exp }           =  JSON.parse(atob(payload))
+        
+        const cond_1    =  await crypto.subtle.verify('HMAC', await key(), Uint8Array.from(atob(sign), c => c.charCodeAt(0)), new TextEncoder().encode(`${header}.${payload}`))
+        const cond_2    =  DBASE.some(row => (row.user == user))
+        const cond_3    = (Date.now() < exp)
+        const cond_all  = (cond_1 && cond_2 && cond_3)
+
         return cond_all
-    } catch {
-        return false
+    } catch { 
+        return false 
     }
 }
+
 
 
 
@@ -83,8 +98,8 @@ export default {
         if (url.pathname == '/login') {
             const { user, pass } = await request.json()
             if (await hash_validate(user, pass))
-                    return Response.json({ status:200, token:token_generate(user) }, { headers })
-            else    return Response.json({ status:401, token:""                   }, { headers })
+                    return Response.json({ status:200, token: await token_generate(user) }, { headers })
+            else    return Response.json({ status:401, token: ""                         }, { headers })
         }
         
 
@@ -92,7 +107,7 @@ export default {
         // ======================== Auth ======================== //
         if (url.pathname == '/auth') {
             const token = request.headers.get('Authorization')?.replace('Bearer ', '')
-            if (token_validate(token))
+            if (await token_validate(token))
                     return Response.json({ status:200, auth:true  }, { headers })
             else    return Response.json({ status:401, auth:false }, { headers })
         }
@@ -104,8 +119,8 @@ export default {
             const token = request.headers.get('Authorization')?.replace('Bearer ', '')
             const { user, pass } = await request.json()
 
-            const valid_1 =      token_validate(token)
-            const valid_2 = await hash_validate(user, pass)
+            const valid_1 = await token_validate(token)
+            const valid_2 = await  hash_validate(user, pass)
             
             if (valid_1 || valid_2) 
                     return new Response(private_html, { status:200, headers: { ...headers, 'Content-Type':'text/html' }})
